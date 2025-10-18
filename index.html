@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0, viewport-fit=cover" />
-<title>Mobile Geometry Nodes — Mockup</title>
+<title>Mobile Geometry Nodes — Copy & Paste</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -11,14 +11,14 @@
     --panel:#1e2024;
     --panel-2:#16171a;
     --muted:#9aa0a6;
-    --accent:#39c0b4;   /* teal wires */
+    --accent:#39c0b4;
     --node-blue:#3b7fe8;
     --node-yellow:#ffb86b;
-    --node-green:#52d37a;
     --glass: rgba(255,255,255,0.03);
   }
   html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#e6eefc;-webkit-font-smoothing:antialiased;overflow:hidden}
   .app{height:100%;display:flex;flex-direction:column}
+
   /* VIEWPORT */
   .viewport {
     height:42vh;
@@ -32,244 +32,393 @@
     overflow:hidden;
     user-select:none;
   }
-  .viewport .placeholder {
-    width:92%;
-    height:86%;
-    border-radius:10px;
-    background:linear-gradient(180deg,#0b0c0e,#111214);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 6px 24px rgba(0,0,0,0.6);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:var(--muted);
-    font-size:13px;
-    padding:12px;
-  }
-  .viewport .mini-controls{
-    position:absolute;
-    right:10px;
-    top:10px;
-    display:flex;
-    gap:8px;
-    z-index:4;
-  }
-  .chip{
-    background:var(--glass);
-    padding:6px 10px;
-    border-radius:8px;
-    font-size:12px;
-    color:var(--muted);
-    border:1px solid rgba(255,255,255,0.02);
-  }
+  .mini-controls{position:absolute;right:10px;top:10px;display:flex;gap:8px;z-index:4}
+  .chip{background:var(--glass);padding:6px 10px;border-radius:8px;font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,0.02)}
 
   /* NODE AREA */
-  .node-area {
-    flex:1;
-    display:flex;
-    gap:10px;
-    padding:12px;
-    overflow:auto;
-    -webkit-overflow-scrolling:touch;
-    background:linear-gradient(180deg,#0f1012,#0b0b0d);
-  }
+  .node-area { flex:1; display:flex; gap:10px; padding:12px; overflow:auto; -webkit-overflow-scrolling:touch; background:linear-gradient(180deg,#0f1012,#0b0b0d); }
+  .node-canvas { min-width:1400px; height:100%; position:relative; border-radius:8px; padding:18px; }
 
-  /* very wide canvas to allow horizontal scrolling like Blender */
-  .node-canvas {
-    min-width:1400px; /* wide so the node network feels expansive */
-    height:100%;
-    position:relative;
-    border-radius:8px;
-    padding:18px;
-  }
-
-  /* SVG connectors behind nodes */
   svg.connectors { position:absolute; inset:0; z-index:6; pointer-events:none; }
 
   /* Node */
-  .node {
-    position:absolute;
-    width:220px;
-    background:linear-gradient(180deg,var(--panel),var(--panel-2));
-    border-radius:8px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.6);
-    border:1px solid rgba(255,255,255,0.03);
-    color:#e9f2ff;
-    overflow:hidden;
-    z-index:8;
-    touch-action:none;
-  }
-  .node .head {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-  }
-  .node .head .dot {
-    width:10px;height:10px;border-radius:3px;background:var(--node-blue);box-shadow:0 1px 0 rgba(255,255,255,0.03);
-  }
-  .node .title{font-weight:700;font-size:14px}
-  .node .body {padding:8px 10px 12px 10px;font-size:13px;color:var(--muted)}
-  .param {display:flex;align-items:center;gap:8px;margin-bottom:8px}
-  .param label{flex:1;font-size:12px;color:var(--muted)}
-  .param input[type=range]{width:110px}
-  .port-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
-  .port{width:12px;height:12px;border-radius:3px;background:transparent;border:2px solid rgba(255,255,255,0.04);display:inline-block}
-  .port.out{background:linear-gradient(180deg,var(--accent),#2aa79a);box-shadow:0 2px 8px rgba(56,192,180,0.12)}
-  .port.in{background:linear-gradient(180deg,#ffb86b,#ff9d00);box-shadow:0 2px 10px rgba(255,184,107,0.06)}
+  .node { position:absolute; width:220px; background:linear-gradient(180deg,var(--panel),var(--panel-2)); border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); color:#e9f2ff; overflow:hidden; z-index:8; touch-action:none }
+  .node .head { display:flex; align-items:center; gap:8px; padding:8px 10px; }
+  .node .head .dot { width:10px;height:10px;border-radius:3px;background:var(--node-blue);box-shadow:0 1px 0 rgba(255,255,255,0.03) }
+  .node .title { font-weight:700;font-size:14px }
+  .node .body { padding:8px 10px 12px 10px;font-size:13px;color:var(--muted) }
+  .param { display:flex; align-items:center; gap:8px; margin-bottom:8px }
+  .param label { flex:1; font-size:12px; color:var(--muted) }
+  .param input[type=range] { width:110px }
+  .port-row { display:flex; align-items:center; justify-content:space-between; margin-top:8px }
+  .port { width:12px; height:12px; border-radius:3px; background:transparent; border:2px solid rgba(255,255,255,0.04); display:inline-block }
+  .port.out { background:linear-gradient(180deg,var(--accent),#2aa79a); box-shadow:0 2px 8px rgba(56,192,180,0.12) }
+  .port.in { background:linear-gradient(180deg,#ffb86b,#ff9d00); box-shadow:0 2px 10px rgba(255,184,107,0.06) }
 
-  /* different types */
   .node.prim .head .dot{background:linear-gradient(180deg,#3b7fe8,#356fd3)}
   .node.disp .head .dot{background:linear-gradient(180deg,#39c0b4,#2aa79a)}
   .node.out .head .dot{background:linear-gradient(180deg,#ffb86b,#ff9d00)}
 
-  /* footer hint */
-  .hintbar{
-    position:fixed;left:12px;right:12px;bottom:12px;background:rgba(255,255,255,0.02);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);z-index:30;border:1px solid rgba(255,255,255,0.02)
-  }
+  .hintbar{ position:fixed; left:12px; right:12px; bottom:12px; background:rgba(255,255,255,0.02); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); z-index:30; border:1px solid rgba(255,255,255,0.02) }
 
-  /* Responsive smaller nodes on very small screens */
+  /* small responsive */
   @media (max-width:420px){
     .node{width:190px}
     .node-canvas{min-width:1200px}
+    .viewport{height:45vh}
   }
 </style>
 </head>
 <body>
   <div class="app">
-    <div class="viewport">
-      <div class="placeholder">3D Viewport — rotate with two-finger drag / pinch to zoom (placeholder for Three.js)</div>
-      <div class="mini-controls" aria-hidden>
-        <div class="chip">Shading</div>
-        <div class="chip">Viewport</div>
-      </div>
+    <div class="viewport" id="viewport">
+      <!-- Three.js canvas will be injected here -->
+      <div class="mini-controls"><div class="chip">Shading</div><div class="chip">Viewport</div></div>
     </div>
 
     <div class="node-area">
       <div class="node-canvas" id="canvas">
-
-        <!-- svg connectors drawn behind -->
-        <svg class="connectors" id="svg" viewBox="0 0 1400 800" preserveAspectRatio="none">
-          <!-- decorative connectors for mockup -->
-          <path d="M 220 80 C 380 80 420 220 560 220" stroke="rgba(57,192,180,0.92)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
-          <path d="M 220 150 C 420 150 520 320 680 320" stroke="rgba(57,192,180,0.65)" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85"/>
-          <path d="M 880 160 C 1020 160 1100 260 1240 260" stroke="rgba(57,192,180,0.9)" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.9"/>
-        </svg>
-
-        <!-- Left column of compact primitive nodes (stack) -->
-        <div class="node prim" style="left:18px; top:18px">
-          <div class="head"><div class="dot"></div><div class="title">Primitive</div></div>
-          <div class="body">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Type</div>
-            <div style="display:flex;gap:6px">
-              <div class="chip" style="background:rgba(255,255,255,0.02);color:var(--muted)">IcoSphere</div>
-              <div class="chip" style="background:rgba(255,255,255,0.02);color:var(--muted)">Plane</div>
-            </div>
-            <div class="param" style="margin-top:10px">
-              <label>Resolution</label>
-              <input type="range" min="0" max="6" value="3" />
-            </div>
-            <div class="port-row">
-              <div style="font-size:12px;color:var(--muted)">Out</div>
-              <div class="port out" title="Out"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- big left stack showing many repeat nodes (to mimic complex graph feel) -->
-        <div class="node prim" style="left:18px; top:140px; width:120px">
-          <div class="head"><div class="dot"></div><div class="title" style="font-size:13px">Instance</div></div>
-          <div class="body" style="padding-top:6px">
-            <div style="height:44px; background:linear-gradient(180deg,#0b0c0e,#0d0e10); border-radius:6px; display:flex;align-items:center;justify-content:center;color:var(--muted); font-size:12px">point cloud</div>
-            <div class="port-row" style="margin-top:8px">
-              <div style="font-size:12px;color:var(--muted)">Out</div>
-              <div class="port out"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- middle column: displace + modifiers -->
-        <div class="node disp" style="left:280px; top:40px">
-          <div class="head"><div class="dot"></div><div class="title">Displace</div></div>
-          <div class="body">
-            <div class="param"><label>Strength</label><input type="range" min="0" max="1" value="0.32" step="0.01"/></div>
-            <div class="param"><label>Noise Scale</label><input type="range" min="0.3" max="5" value="1.2" step="0.1"/></div>
-            <div class="port-row">
-              <div style="display:flex;gap:6px;align-items:center">
-                <div class="port in" title="In"></div>
-                <div style="font-size:12px;color:var(--muted)">In</div>
-              </div>
-              <div style="display:flex;gap:6px;align-items:center">
-                <div style="font-size:12px;color:var(--muted)">Out</div>
-                <div class="port out"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="node disp" style="left:460px; top:40px">
-          <div class="head"><div class="dot"></div><div class="title">Noise</div></div>
-          <div class="body">
-            <div class="param"><label>Scale</label><input type="range" min="0.1" max="8" value="1.0" step="0.1"/></div>
-            <div class="param"><label>Detail</label><input type="range" min="0" max="1" value="0.6" step="0.01"/></div>
-            <div class="port-row">
-              <div style="display:flex;gap:6px;align-items:center"><div class="port out"></div><div style="font-size:12px;color:var(--muted)">Out</div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- right column: outputs -->
-        <div class="node out" style="left:980px; top:80px">
-          <div class="head"><div class="dot"></div><div class="title">Output</div></div>
-          <div class="body">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Viewer / Geometry</div>
-            <div style="height:72px;background:linear-gradient(180deg,#0b0c0f,#0d0e10);border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;color:var(--muted)">Preview</div>
-            <div class="port-row">
-              <div style="display:flex;gap:6px;align-items:center"><div class="port in"></div><div style="font-size:12px;color:var(--muted)">In</div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- small helper node -->
-        <div class="node prim" style="left:720px; top:220px; width:160px">
-          <div class="head"><div class="dot"></div><div class="title">Join Geometry</div></div>
-          <div class="body">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Combine several inputs</div>
-            <div class="port-row">
-              <div><div class="port in" style="margin-right:6px"></div><div class="port in"></div></div>
-              <div><div class="port out"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- bottom-left cluster representing many small nodes -->
-        <div class="node prim" style="left:18px; top:320px; width:280px">
-          <div class="head"><div class="dot"></div><div class="title">Attribute / Math Stack</div></div>
-          <div class="body">
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <div class="chip" style="padding:6px 8px">Add</div>
-              <div class="chip" style="padding:6px 8px">Multiply</div>
-              <div class="chip" style="padding:6px 8px">Clamp</div>
-              <div class="chip" style="padding:6px 8px">Vector Math</div>
-            </div>
-            <div style="height:10px"></div>
-            <div class="port-row">
-              <div style="font-size:12px;color:var(--muted)">Out</div>
-              <div class="port out"></div>
-            </div>
-          </div>
-        </div>
-
+        <svg class="connectors" id="svg" width="100%" height="100%"></svg>
+        <!-- nodes will be injected by JS -->
       </div>
     </div>
 
     <div class="hintbar">
-      <div>Tap <strong>out</strong> → then <strong>in</strong> to connect • Drag nodes to reposition • Export later</div>
-      <div style="display:flex;gap:8px">
-        <div class="chip">Mobile</div>
-        <div class="chip">PWA-ready</div>
-      </div>
+      <div>Tap <strong>out</strong> → then <strong>in</strong> to connect • Drag nodes to reposition</div>
+      <div style="display:flex;gap:8px"><div class="chip">Mobile</div><div class="chip">PWA-ready</div></div>
     </div>
-
   </div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/controls/OrbitControls.js';
+
+/* ---------- THREE.JS VIEWPORT ---------- */
+const viewport = document.getElementById('viewport');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0,0,3);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight * 0.42);
+viewport.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = true;
+controls.touches.ONE = THREE.TOUCH.ROTATE;
+controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(4,6,2);
+scene.add(sun);
+
+let currentMesh = null;
+
+/* ---------- Minimal CPU noise (deterministic) ---------- */
+function pseudoNoise(x,y,z){
+  const s = Math.sin(x*12.9898 + y*78.233 + z*37.719) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/* ---------- Geometry helpers ---------- */
+function makePrimitive(type='icosphere', res=3){
+  if(type === 'plane') return new THREE.PlaneGeometry(2,2, 32, 32);
+  return new THREE.IcosahedronGeometry(1, Math.max(0,Math.min(6,parseInt(res))));
+}
+
+function applyDisplaceToGeomBuffer(geoBuffer, strength=0.32, scale=1.0){
+  // geoBuffer: {positions: Float32Array, normals: Float32Array, index: Uint16Array|null, vertexCount}
+  const pos = new Float32Array(geoBuffer.positions.length);
+  for(let i=0;i<geoBuffer.vertexCount;i++){
+    const ox = geoBuffer.positions[i*3], oy = geoBuffer.positions[i*3+1], oz = geoBuffer.positions[i*3+2];
+    const n = pseudoNoise(ox*scale, oy*scale, oz*scale);
+    const disp = (n - 0.5) * 2 * strength * 0.35;
+    const len = Math.sqrt(ox*ox+oy*oy+oz*oz) || 1;
+    pos[i*3]   = ox + (ox/len) * disp;
+    pos[i*3+1] = oy + (oy/len) * disp;
+    pos[i*3+2] = oz + (oz/len) * disp;
+  }
+  return {positions:pos, index:geoBuffer.index, vertexCount:geoBuffer.vertexCount};
+}
+
+function bufferFromThreeGeometry(g){
+  const positions = g.attributes.position.array.slice();
+  const normals = g.attributes.normal ? g.attributes.normal.array.slice() : null;
+  const index = g.index ? g.index.array.slice() : null;
+  return {positions, normals, index, vertexCount: g.attributes.position.count};
+}
+
+/* set mesh from buffer */
+function setMeshFromBuffer(buf){
+  if(currentMesh){ scene.remove(currentMesh); currentMesh.geometry.dispose(); currentMesh.material.dispose(); currentMesh = null; }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(buf.positions, 3));
+  if(buf.index) geom.setIndex(buf.index);
+  geom.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({color:0x66aaff, flatShading:true, metalness:0.05, roughness:0.6});
+  const mesh = new THREE.Mesh(geom, mat);
+  currentMesh = mesh;
+  scene.add(mesh);
+}
+
+/* ---------- Node system (visual + simple evaluation) ---------- */
+const canvas = document.getElementById('canvas');
+const svg = document.getElementById('svg');
+
+let nodes = {};
+let connections = [];
+let pending = null; // {from:{nodeId,port}} when connecting
+
+function createNode({id,title,x=20,y=20,params=[],ports=[] , cls='' }){
+  const el = document.createElement('div');
+  el.className = 'node ' + cls;
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.dataset.id = id;
+
+  el.innerHTML = `
+    <div class="head"><div class="dot"></div><div class="title">${title}</div></div>
+    <div class="body"></div>
+  `;
+  const body = el.querySelector('.body');
+
+  params.forEach(p => {
+    const row = document.createElement('div'); row.className='param';
+    const lab = document.createElement('label'); lab.textContent = p.label;
+    let control;
+    if(p.type === 'range'){
+      control = document.createElement('input'); control.type='range';
+      control.min = p.min; control.max = p.max; control.step = p.step||0.01; control.value = p.value;
+      control.addEventListener('input', ()=> { p.value = parseFloat(control.value); debounceEval(); });
+    } else if(p.type === 'select'){
+      control = document.createElement('select');
+      p.options.forEach(opt => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; if(opt===p.value) o.selected=true; control.appendChild(o); });
+      control.addEventListener('change', ()=> { p.value = control.value; debounceEval(); });
+    }
+    row.appendChild(lab); row.appendChild(control);
+    body.appendChild(row);
+  });
+
+  const rowPorts = document.createElement('div'); rowPorts.className='port-row';
+  ports.forEach(pt => {
+    const wrapper = document.createElement('div'); wrapper.style.display='flex'; wrapper.style.alignItems='center'; wrapper.style.gap='6px';
+    if(pt.type === 'in'){
+      const dot = document.createElement('div'); dot.className='port in'; dot.dataset.node=id; dot.dataset.port=pt.name; dot.dataset.portType='in';
+      dot.addEventListener('pointerdown', (ev)=> { ev.stopPropagation(); onPortDown(dot); });
+      wrapper.appendChild(dot);
+      const label = document.createElement('div'); label.style.fontSize='12px'; label.style.color='var(--muted)'; label.textContent = pt.name;
+      wrapper.appendChild(label);
+    } else {
+      const label = document.createElement('div'); label.style.fontSize='12px'; label.style.color='var(--muted)'; label.textContent = pt.name;
+      wrapper.appendChild(label);
+      const dot = document.createElement('div'); dot.className='port out'; dot.dataset.node=id; dot.dataset.port=pt.name; dot.dataset.portType='out';
+      dot.addEventListener('pointerdown', (ev)=> { ev.stopPropagation(); onPortDown(dot); });
+      wrapper.appendChild(dot);
+    }
+    rowPorts.appendChild(wrapper);
+  });
+
+  body.appendChild(rowPorts);
+
+  // draggable
+  el.addEventListener('pointerdown', nodePointerDown);
+  canvas.appendChild(el);
+  nodes[id] = {id, title, el, params, ports};
+  return nodes[id];
+}
+
+/* node drag */
+function nodePointerDown(e){
+  if(e.target.classList.contains('port')) return;
+  const el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+  const startX = e.clientX, startY = e.clientY;
+  const rect = el.getBoundingClientRect();
+  const offsetX = startX - rect.left, offsetY = startY - rect.top;
+  function move(ev){
+    el.style.left = (ev.clientX - offsetX) + 'px';
+    el.style.top = (ev.clientY - offsetY) + 'px';
+    drawConnections();
+  }
+  function up(ev){
+    try{ el.releasePointerCapture(e.pointerId); }catch(e){}
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+  }
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+}
+
+/* port interactions */
+function onPortDown(portEl){
+  const nodeId = portEl.dataset.node, portName = portEl.dataset.port, type = portEl.dataset.portType;
+  if(type === 'out'){
+    pending = {from:{nodeId, portName}, fromEl: portEl};
+    portEl.style.boxShadow = '0 0 0 6px rgba(57,192,180,0.12)';
+    document.addEventListener('pointerdown', outsideCanceller);
+  } else if(type === 'in' && pending){
+    // create connection
+    connections.push({from: pending.from, to:{nodeId, portName}});
+    clearPending();
+    drawConnections();
+    debounceEval();
+  }
+}
+
+function outsideCanceller(ev){
+  if(!ev.target.classList.contains('port') || ev.target.dataset.portType !== 'in') clearPending();
+}
+
+function clearPending(){
+  if(pending && pending.fromEl) pending.fromEl.style.boxShadow = '';
+  pending = null;
+  document.removeEventListener('pointerdown', outsideCanceller);
+}
+
+/* draw connections using SVG cubic curves */
+function getCenter(elem){
+  const r = elem.getBoundingClientRect();
+  const parent = document.body.getBoundingClientRect();
+  return {x: r.left + r.width/2 - parent.left, y: r.top + r.height/2 - parent.top};
+}
+
+function findPortEl(nodeId, portName, type){
+  const node = nodes[nodeId];
+  if(!node) return null;
+  const els = node.el.querySelectorAll('.port');
+  for(const e of els) if(e.dataset.port===portName && e.dataset.portType===type) return e;
+  return null;
+}
+
+function drawConnections(){
+  // clear
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  connections.forEach(conn => {
+    const outEl = findPortEl(conn.from.nodeId, conn.from.portName, 'out');
+    const inEl  = findPortEl(conn.to.nodeId, conn.to.portName, 'in');
+    if(!outEl || !inEl) return;
+    const a = getCenter(outEl), b = getCenter(inEl);
+    const midX = (a.x + b.x)/2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const d = `M ${a.x} ${a.y} C ${midX} ${a.y} ${midX} ${b.y} ${b.x} ${b.y}`;
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', 'rgba(57,192,180,0.9)');
+    path.setAttribute('stroke-width', '6');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-linecap','round');
+    svg.appendChild(path);
+    const inner = document.createElementNS('http://www.w3.org/2000/svg','path');
+    inner.setAttribute('d', d);
+    inner.setAttribute('stroke','rgba(10,12,18,0.15)');
+    inner.setAttribute('stroke-width','2');
+    inner.setAttribute('fill','none');
+    svg.appendChild(inner);
+  });
+}
+
+/* ---------- Graph evaluation (simple) ---------- */
+function evaluateGraph(){
+  // find connection into Output's Geometry input
+  const outputNode = Object.values(nodes).find(n=>n.title==='Output');
+  if(!outputNode) return;
+  const connToOutput = connections.find(c => c.to.nodeId === outputNode.id && c.to.portName === 'Geometry');
+  let buffer = null;
+  if(connToOutput){
+    const srcId = connToOutput.from.nodeId;
+    const src = nodes[srcId];
+    if(src.title === 'Displace'){
+      // find geometry into Displace
+      const connToDisp = connections.find(c => c.to.nodeId === srcId && c.to.portName === 'Geometry');
+      let primNode = connToDisp ? nodes[connToDisp.from.nodeId] : nodes['primitive'];
+      // evaluate primitive
+      const primType = primNode.params.find(p=>p.label==='Type')?.value || 'IcoSphere';
+      const primRes = primNode.params.find(p=>p.label==='Resolution')?.value || 3;
+      const threeGeom = makePrimitive( (primType==='Plane'?'plane':'icosphere'), primRes );
+      const buf = bufferFromThreeGeometry(threeGeom);
+      // apply displacement from Displace node params
+      const strength = src.params.find(p=>p.label==='Strength')?.value || 0.32;
+      const scale = src.params.find(p=>p.label==='Noise Scale')?.value || 1.0;
+      buffer = applyDisplaceToGeomBuffer(buf, strength, scale);
+    } else if(src.title === 'Primitive'){
+      const primType = src.params.find(p=>p.label==='Type')?.value || 'IcoSphere';
+      const primRes = src.params.find(p=>p.label==='Resolution')?.value || 3;
+      const threeGeom = makePrimitive( (primType==='Plane'?'plane':'icosphere'), primRes );
+      buffer = bufferFromThreeGeometry(threeGeom);
+    }
+  } else {
+    // nothing connected to output — default primitive
+    const primNode = nodes['primitive'];
+    const primType = primNode.params.find(p=>p.label==='Type')?.value || 'IcoSphere';
+    const primRes = primNode.params.find(p=>p.label==='Resolution')?.value || 3;
+    buffer = bufferFromThreeGeometry(makePrimitive( (primType==='Plane'?'plane':'icosphere'), primRes ));
+  }
+
+  if(buffer) setMeshFromBuffer(buffer);
+}
+
+/* debounce eval for responsiveness */
+let evalTimer = null;
+function debounceEval(){
+  if(evalTimer) clearTimeout(evalTimer);
+  evalTimer = setTimeout(()=>{ evaluateGraph(); evalTimer = null; }, 80);
+}
+
+/* ---------- Setup initial nodes (primitive, displace, output) ---------- */
+function setup(){
+  createNode({
+    id:'primitive',
+    title:'Primitive',
+    x:18,y:18,
+    cls:'prim',
+    params:[
+      {label:'Type', type:'select', options:['IcoSphere','Plane'], value:'IcoSphere'},
+      {label:'Resolution', type:'range', min:0, max:6, step:1, value:3}
+    ],
+    ports:[{name:'Geometry', type:'out'}]
+  });
+
+  createNode({
+    id:'displace',
+    title:'Displace',
+    x:280,y:40,
+    cls:'disp',
+    params:[
+      {label:'Strength', type:'range', min:0, max:1, step:0.01, value:0.32},
+      {label:'Noise Scale', type:'range', min:0.3, max:6, step:0.1, value:1.0}
+    ],
+    ports:[{name:'Geometry', type:'in'}, {name:'Geometry', type:'out'}]
+  });
+
+  createNode({
+    id:'output',
+    title:'Output',
+    x:980,y:80,
+    cls:'out',
+    params:[],
+    ports:[{name:'Geometry', type:'in'}]
+  });
+
+  drawConnections();
+  evaluateGraph();
+}
+
+/* ---------- window resize & render ---------- */
+window.addEventListener('resize', ()=>{
+  camera.aspect = innerWidth / (innerHeight * 0.42);
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight * 0.42);
+  drawConnections();
+});
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+animate();
+
+/* start */
+setup();
+drawConnections();
+evaluateGraph();
+
+</script>
 </body>
 </html>
