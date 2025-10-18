@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometry Nodes Lite (HTML + JS)</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family:sans-serif; background:#202225; color:#ddd; }
+  #viewport { position:absolute; top:0; left:0; right:0; bottom:0; }
+  #nodes { position:absolute; top:10px; left:10px; z-index:10; }
+  .node {
+    background:#2f3136; border:1px solid #555; border-radius:6px;
+    padding:8px 10px; width:160px; margin-bottom:8px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.4); cursor:move;
+  }
+  .node h3 { font-size:14px; margin:0 0 6px; color:#fff; }
+  .node label { font-size:12px; display:block; margin-bottom:4px; }
+  .node input[type=range] { width:100%; }
+</style>
+</head>
+<body>
+<div id="viewport"></div>
+
+<div id="nodes">
+  <div class="node" id="displaceNode">
+    <h3>Displace</h3>
+    <label>Strength <input id="strength" type="range" min="0" max="1" step="0.01" value="0.3"></label>
+    <label>Noise Scale <input id="scale" type="range" min="0.5" max="5" step="0.1" value="1.0"></label>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js";
+  import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/controls/OrbitControls.js";
+
+  // === Setup scene ===
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 3);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth, innerHeight);
+  document.getElementById('viewport').appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(5, 5, 5);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x404040, 0.8));
+
+  // === Geometry + Material ===
+  const geometry = new THREE.IcosahedronGeometry(1, 5);
+  const basePositions = geometry.attributes.position.array.slice();
+  const material = new THREE.MeshStandardMaterial({color:0x66aaff, flatShading:true});
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  // === Simple noise ===
+  function noise(x, y, z) {
+    const s = Math.sin(x*12.9898 + y*78.233 + z*37.719) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  // === Displace function ===
+  function applyDisplace(strength, scale) {
+    const pos = geometry.attributes.position.array;
+    for (let i=0; i<pos.length; i+=3) {
+      const ox = basePositions[i], oy = basePositions[i+1], oz = basePositions[i+2];
+      const n = noise(ox*scale, oy*scale, oz*scale);
+      const disp = (n - 0.5) * 2 * strength * 0.3;
+      const len = Math.sqrt(ox*ox + oy*oy + oz*oz);
+      pos[i]   = ox + (ox/len) * disp;
+      pos[i+1] = oy + (oy/len) * disp;
+      pos[i+2] = oz + (oz/len) * disp;
+    }
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+
+  // === Hook up sliders ===
+  const strengthSlider = document.getElementById('strength');
+  const scaleSlider = document.getElementById('scale');
+
+  function update() {
+    applyDisplace(parseFloat(strengthSlider.value), parseFloat(scaleSlider.value));
+  }
+  strengthSlider.addEventListener('input', update);
+  scaleSlider.addEventListener('input', update);
+
+  update(); // first run
+
+  // === Render loop ===
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // === Make node draggable ===
+  const node = document.getElementById('displaceNode');
+  node.onmousedown = e => {
+    const rect = node.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    function move(ev) {
+      node.style.left = ev.clientX - offsetX + 'px';
+      node.style.top = ev.clientY - offsetY + 'px';
+    }
+    function up() {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  };
+</script>
+</body>
+</html>
