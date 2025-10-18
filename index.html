@@ -1,127 +1,402 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Geometry Nodes Lite (HTML + JS)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0, viewport-fit=cover" />
+<title>Mobile Geometry Nodes — Prototype</title>
 <style>
-  html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family:sans-serif; background:#202225; color:#ddd; }
-  #viewport { position:absolute; top:0; left:0; right:0; bottom:0; }
-  #nodes { position:absolute; top:10px; left:10px; z-index:10; }
-  .node {
-    background:#2f3136; border:1px solid #555; border-radius:6px;
-    padding:8px 10px; width:160px; margin-bottom:8px;
-    box-shadow:0 2px 4px rgba(0,0,0,0.4); cursor:move;
+  :root{
+    --bg:#1e1f22; --panel:#2a2c30; --panel-2:#242628;
+    --accent:#63a0ff; --muted:#9aa0a6; --glass: rgba(255,255,255,0.04);
   }
-  .node h3 { font-size:14px; margin:0 0 6px; color:#fff; }
-  .node label { font-size:12px; display:block; margin-bottom:4px; }
-  .node input[type=range] { width:100%; }
+  html,body{height:100%;margin:0;background:var(--bg);-webkit-user-select:none;user-select:none;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
+  #app{width:100%;height:100%;position:relative;overflow:hidden}
+  /* viewport (three.js) */
+  #viewport{position:absolute;inset:0;background:linear-gradient(180deg,#111218,#1a1b1f);touch-action:none}
+  /* left/top node canvas */
+  #nodeLayer{position:absolute;left:8px;top:8px;z-index:20;pointer-events:none}
+  svg#connectors{position:absolute;inset:0;z-index:15;pointer-events:none}
+  /* node style */
+  .node{width:210px;background:linear-gradient(180deg,var(--panel),var(--panel-2));border-radius:8px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.6);color:#e7eefc;border:1px solid rgba(255,255,255,0.03);pointer-events:auto;position:absolute;touch-action:none}
+  .nodetitle{font-weight:700;font-size:15px;margin:0 0 8px;color:#fff}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  label{font-size:12px;color:var(--muted);flex:1}
+  input[type=range]{width:100%}
+  .port{width:14px;height:14px;border-radius:4px;background:var(--glass);border:2px solid rgba(255,255,255,0.06);display:inline-block;margin-left:6px;flex:0;touch-action:none}
+  .port.out{background:linear-gradient(180deg,var(--accent),#3b7fe8)}
+  .port.in{background:linear-gradient(180deg,#ffb86b,#ff9d00);opacity:0.95}
+  .hint{font-size:12px;color:var(--muted);padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.18);margin-top:6px}
+  /* small controls row at bottom */
+  #toolbar{position:absolute;left:8px;right:8px;bottom:10px;z-index:20;display:flex;gap:8px;align-items:center;justify-content:flex-start}
+  .btn{background:rgba(255,255,255,0.03);color:#cfe6ff;border-radius:8px;padding:8px 12px;border:1px solid rgba(255,255,255,0.03);font-weight:600}
+  .ghost{opacity:0.7}
+  /* responsive adjustments */
+  @media (max-width:420px){
+    .node{width:200px;padding:10px;font-size:14px}
+  }
+  /* small overlay instructions */
+  #info{position:absolute;right:10px;top:10px;background:rgba(0,0,0,0.25);padding:8px;border-radius:8px;color:var(--muted);font-size:12px;z-index:22}
 </style>
 </head>
 <body>
-<div id="viewport"></div>
+<div id="app">
+  <div id="viewport"></div>
 
-<div id="nodes">
-  <div class="node" id="displaceNode">
-    <h3>Displace</h3>
-    <label>Strength <input id="strength" type="range" min="0" max="1" step="0.01" value="0.3"></label>
-    <label>Noise Scale <input id="scale" type="range" min="0.5" max="5" step="0.1" value="1.0"></label>
+  <svg id="connectors" width="100%" height="100%"></svg>
+
+  <div id="nodeLayer">
+    <!-- Nodes inserted by JS -->
+  </div>
+
+  <div id="info">Tap <strong>output</strong> port → then <strong>input</strong> port to connect. Drag nodes to reposition. Touch-friendly.</div>
+
+  <div id="toolbar">
+    <button class="btn" id="btnReset">Reset</button>
+    <button class="btn ghost" id="btnExport">Export JSON</button>
   </div>
 </div>
 
 <script type="module">
-  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js";
-  import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/controls/OrbitControls.js";
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/controls/OrbitControls.js';
 
-  // === Setup scene ===
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
-  camera.position.set(0, 0, 3);
+/* ---------- Basic 3D scene ---------- */
+const container = document.getElementById('viewport');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0,0,3);
 
-  const renderer = new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(innerWidth, innerHeight);
-  document.getElementById('viewport').appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+container.appendChild(renderer.domElement);
 
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = true;
 
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(5, 5, 5);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x404040, 0.8));
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(4,6,2);
+scene.add(sun);
 
-  // === Geometry + Material ===
-  const geometry = new THREE.IcosahedronGeometry(1, 5);
-  const basePositions = geometry.attributes.position.array.slice();
-  const material = new THREE.MeshStandardMaterial({color:0x66aaff, flatShading:true});
-  const mesh = new THREE.Mesh(geometry, material);
-  scene.add(mesh);
+/* default geometry (will be replaced by graph) */
+let currentMesh = null;
 
-  // === Simple noise ===
-  function noise(x, y, z) {
-    const s = Math.sin(x*12.9898 + y*78.233 + z*37.719) * 43758.5453;
-    return s - Math.floor(s);
-  }
+/* ---------- Node system (simple) ---------- */
 
-  // === Displace function ===
-  function applyDisplace(strength, scale) {
-    const pos = geometry.attributes.position.array;
-    for (let i=0; i<pos.length; i+=3) {
-      const ox = basePositions[i], oy = basePositions[i+1], oz = basePositions[i+2];
-      const n = noise(ox*scale, oy*scale, oz*scale);
-      const disp = (n - 0.5) * 2 * strength * 0.3;
-      const len = Math.sqrt(ox*ox + oy*oy + oz*oz);
-      pos[i]   = ox + (ox/len) * disp;
-      pos[i+1] = oy + (oy/len) * disp;
-      pos[i+2] = oz + (oz/len) * disp;
-    }
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
-  }
+const nodeLayer = document.getElementById('nodeLayer');
+const svg = document.getElementById('connectors');
 
-  // === Hook up sliders ===
-  const strengthSlider = document.getElementById('strength');
-  const scaleSlider = document.getElementById('scale');
+let nodes = {};                // id -> node object
+let connections = [];          // {from: {nodeId, port}, to: {nodeId, port}}
+let pendingConnection = null;  // when user taps output port
 
-  function update() {
-    applyDisplace(parseFloat(strengthSlider.value), parseFloat(scaleSlider.value));
-  }
-  strengthSlider.addEventListener('input', update);
-  scaleSlider.addEventListener('input', update);
-
-  update(); // first run
-
-  // === Render loop ===
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener('resize', ()=>{
-    camera.aspect = innerWidth/innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+// create a node element factory
+function createNode({id, title, x=12, y=12, params=[], ports=[]}){
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.dataset.id = id;
+  el.innerHTML = `<div class="nodetitle">${title}</div>`;
+  // params
+  params.forEach(p => {
+    const row = document.createElement('div'); row.className='row';
+    const lab = document.createElement('label'); lab.textContent = p.label;
+    const range = document.createElement('input'); range.type='range';
+    range.min = p.min; range.max = p.max; range.step = p.step||0.01; range.value = p.value;
+    range.addEventListener('input', ()=>{ p.value = parseFloat(range.value); evaluateGraph(); });
+    row.appendChild(lab); row.appendChild(range);
+    el.appendChild(row);
   });
 
-  // === Make node draggable ===
-  const node = document.getElementById('displaceNode');
-  node.onmousedown = e => {
-    const rect = node.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    function move(ev) {
-      node.style.left = ev.clientX - offsetX + 'px';
-      node.style.top = ev.clientY - offsetY + 'px';
+  // ports row
+  const portRow = document.createElement('div'); portRow.className='row';
+  ports.forEach(pt => {
+    const pr = document.createElement('div'); pr.className = 'port ' + pt.type;
+    pr.dataset.node = id; pr.dataset.port = pt.name; pr.dataset.portType = pt.type;
+    // pointer events for connect or drag
+    pr.addEventListener('pointerdown', (ev)=>{ ev.stopPropagation(); onPortPointerDown(pr); });
+    const sp = document.createElement('div'); sp.style.flex='1'; sp.style.fontSize='12px'; sp.style.color='var(--muted)';
+    sp.textContent = pt.type === 'out' ? pt.name : pt.name;
+    // layout: out ports on right, in on left (we'll keep simple)
+    if(pt.type === 'in'){ portRow.appendChild(pr); portRow.appendChild(sp); }
+    else { portRow.appendChild(sp); portRow.appendChild(pr); }
+  });
+  el.appendChild(portRow);
+
+  // hint
+  const hint = document.createElement('div'); hint.className='hint'; hint.textContent='Drag node — tap ports to connect';
+  el.appendChild(hint);
+
+  // make draggable (pointer events)
+  el.addEventListener('pointerdown', nodePointerDown);
+  nodeLayer.appendChild(el);
+
+  // store node
+  nodes[id] = {id, title, el, params, ports};
+  return nodes[id];
+}
+
+/* ---------- Node behaviors ---------- */
+function nodePointerDown(e){
+  if(e.target.classList.contains('port')) return; // port handled elsewhere
+  const el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+  const startX = e.clientX, startY = e.clientY;
+  const rect = el.getBoundingClientRect();
+  const offsetX = startX - rect.left, offsetY = startY - rect.top;
+  function move(ev){
+    el.style.left = (ev.clientX - offsetX) + 'px';
+    el.style.top = (ev.clientY - offsetY) + 'px';
+    drawAllConnections();
+  }
+  function up(ev){
+    el.releasePointerCapture(e.pointerId);
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+  }
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+}
+
+/* when port tapped to start/finish connection */
+function onPortPointerDown(portEl){
+  const nodeId = portEl.dataset.node;
+  const portName = portEl.dataset.port;
+  const type = portEl.dataset.portType; // 'in' or 'out'
+  if(type === 'out'){
+    // start pending connection
+    pendingConnection = {from:{nodeId, portName}, startEl: portEl};
+    portEl.style.boxShadow = '0 0 0 4px rgba(99,160,255,0.12)';
+    document.addEventListener('pointerdown', cancelIfTapOutside);
+  } else if(type === 'in' && pendingConnection){
+    // create connection from pending.from -> this in
+    connections.push({from: pendingConnection.from, to: {nodeId, portName}});
+    clearPending();
+    drawAllConnections();
+    evaluateGraph();
+  }
+}
+
+function cancelIfTapOutside(ev){
+  // if tap not on an input port, cancel
+  if(!ev.target.classList.contains('port') || ev.target.dataset.portType !== 'in'){
+    clearPending();
+  }
+}
+
+function clearPending(){
+  if(pendingConnection && pendingConnection.startEl) pendingConnection.startEl.style.boxShadow = '';
+  pendingConnection = null;
+  document.removeEventListener('pointerdown', cancelIfTapOutside);
+}
+
+/* ---------- Connectors drawing (SVG cubic lines) ---------- */
+function getPortCenter(portRef){
+  const rect = portRef.getBoundingClientRect();
+  const parentRect = document.body.getBoundingClientRect();
+  return {x: rect.left + rect.width/2 - parentRect.left, y: rect.top + rect.height/2 - parentRect.top};
+}
+
+function findPortElement(nodeId, portName, type){
+  const node = nodes[nodeId];
+  if(!node) return null;
+  // find child with matching dataset
+  const els = node.el.querySelectorAll('.port');
+  for(const e of els) if(e.dataset.port === portName && e.dataset.portType === type) return e;
+  return null;
+}
+
+function drawAllConnections(){
+  // clear
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  // draw each connection
+  connections.forEach(conn => {
+    const outEl = findPortElement(conn.from.nodeId, conn.from.portName, 'out');
+    const inEl  = findPortElement(conn.to.nodeId, conn.to.portName, 'in');
+    if(!outEl || !inEl) return;
+    const a = getPortCenter(outEl), b = getPortCenter(inEl);
+    const midX = (a.x + b.x)/2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const d = `M ${a.x} ${a.y} C ${midX} ${a.y} ${midX} ${b.y} ${b.x} ${b.y}`;
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', 'rgba(99,160,255,0.9)');
+    path.setAttribute('stroke-width', '4');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('opacity','0.9');
+    svg.appendChild(path);
+    const inner = document.createElementNS('http://www.w3.org/2000/svg','path');
+    inner.setAttribute('d', d);
+    inner.setAttribute('stroke','rgba(10,12,18,0.15)');
+    inner.setAttribute('stroke-width','2');
+    inner.setAttribute('fill','none');
+    svg.appendChild(inner);
+  });
+}
+
+/* ---------- Simple graph evaluation ----------
+   We provide 3 node types:
+   - primitive: outputs geometry (sphere/plane)
+   - displace: input geometry -> outputs modified geometry
+   - output: viewer consumes geometry
+   Connections: from primitive.out -> displace.in -> output.in
+*/
+function evaluateGraph(){
+  // find connection chain
+  // find node connected to output input
+  const outputNodeId = Object.values(nodes).find(n=>n.title==='Output')?.id;
+  if(!outputNodeId) return;
+  // find connection to output.in
+  const connToOutput = connections.find(c => c.to.nodeId === outputNodeId && c.to.portName === 'Geometry');
+  let geom = null;
+  if(connToOutput){
+    // if source node is Displace, evaluate its input
+    const srcId = connToOutput.from.nodeId;
+    const srcNode = nodes[srcId];
+    if(srcNode.title === 'Displace'){
+      // find its input connection
+      const connToDisp = connections.find(c => c.to.nodeId === srcId && c.to.portName === 'Geometry');
+      if(connToDisp){
+        const primId = connToDisp.from.nodeId;
+        geom = evaluatePrimitiveNode(nodes[primId]);
+      } else {
+        geom = evaluatePrimitiveNode(defaultPrimitiveNode());
+      }
+      // apply displace using param
+      geom = applyDisplaceToGeometry(geom, srcNode.params[0].value, srcNode.params[1].value);
+    } else if(srcNode.title === 'Primitive'){
+      geom = evaluatePrimitiveNode(srcNode);
     }
-    function up() {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
+  } else {
+    // nothing connected — show default primitive
+    geom = evaluatePrimitiveNode(defaultPrimitiveNode());
+  }
+
+  // render geometry
+  setMeshFromGeometry(geom);
+}
+
+/* ---------- Primitive node evaluation ---------- */
+function evaluatePrimitiveNode(node){
+  // node.params[0] maybe 'type' (we only use sphere resolution)
+  const res = Math.max(1, parseInt(node.params[0].value || 4));
+  // create geometry (basic icosahedron)
+  const geom = new THREE.IcosahedronGeometry(1, res);
+  // copy positions/indices into a custom object for easy CPU displace
+  return {positions: geom.attributes.position.array.slice(), normals: geom.attributes.normal.array.slice(), index: geom.index ? geom.index.array.slice() : null, vertexCount: geom.attributes.position.count};
+}
+
+/* ---------- Displace operation (CPU) ---------- */
+function applyDisplaceToGeometry(geom, strength=0.3, scale=1.0){
+  const pos = new Float32Array(geom.positions.length);
+  const nrm = geom.normals ? new Float32Array(geom.normals.length) : null;
+  for(let i=0;i<geom.vertexCount;i++){
+    const ox = geom.positions[i*3], oy = geom.positions[i*3+1], oz = geom.positions[i*3+2];
+    const n = pseudoNoise(ox*scale, oy*scale, oz*scale);
+    const disp = (n - 0.5) * 2 * strength * 0.35;
+    const len = Math.sqrt(ox*ox+oy*oy+oz*oz) || 1;
+    pos[i*3]   = ox + (ox/len) * disp;
+    pos[i*3+1] = oy + (oy/len) * disp;
+    pos[i*3+2] = oz + (oz/len) * disp;
+    if(nrm){
+      nrm[i*3] = geom.normals[i*3];
+      nrm[i*3+1] = geom.normals[i*3+1];
+      nrm[i*3+2] = geom.normals[i*3+2];
     }
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-  };
+  }
+  return {positions: pos, normals: nrm, index: geom.index, vertexCount: geom.vertexCount};
+}
+
+/* very tiny deterministic hash-noise */
+function pseudoNoise(x,y,z){
+  const s = Math.sin(x*12.9898 + y*78.233 + z*37.719) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/* ---------- Set Three.js mesh from custom geom ---------- */
+function setMeshFromGeometry(g){
+  if(currentMesh){ scene.remove(currentMesh); currentMesh.geometry.dispose(); currentMesh.material.dispose(); currentMesh=null; }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+  if(g.index) geom.setIndex(g.index);
+  geom.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({color:0x66aaff, flatShading:true, metalness:0.05, roughness:0.6});
+  const mesh = new THREE.Mesh(geom, mat);
+  currentMesh = mesh;
+  scene.add(mesh);
+}
+
+/* ---------- Defaults / node creation ---------- */
+function defaultPrimitiveNode(){
+  return nodes['primitive'] || Object.values(nodes).find(n=>n.title==='Primitive');
+}
+
+function setupInitialNodes(){
+  // Primitive node (out: Geometry) with one parameter 'Resolution'
+  createNode({
+    id:'primitive',
+    title:'Primitive',
+    x:12,y:12,
+    params:[{label:'Resolution', min:0, max:6, step:1, value:3}],
+    ports:[{name:'Geometry', type:'out'}]
+  });
+
+  // Displace node (in: Geometry, out: Geometry)
+  createNode({
+    id:'displace',
+    title:'Displace',
+    x:12,y:220,
+    params:[
+      {label:'Strength', min:0, max:1, step:0.01, value:0.32},
+      {label:'Noise Scale', min:0.4, max:6, step:0.1, value:1.0}
+    ],
+    ports:[{name:'Geometry', type:'in'},{name:'Geometry', type:'out'}]
+  });
+
+  // Output node (in: Geometry)
+  createNode({
+    id:'output',
+    title:'Output',
+    x:12,y:420,
+    params:[],
+    ports:[{name:'Geometry', type:'in'}]
+  });
+
+  drawAllConnections();
+  evaluateGraph();
+}
+
+/* ---------- UI actions ---------- */
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  connections = [];
+  drawAllConnections();
+  evaluateGraph();
+});
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const data = {nodes: Object.keys(nodes).map(k=>({id:k,title:nodes[k].title,x:parseInt(nodes[k].el.style.left),y:parseInt(nodes[k].el.style.top),params:nodes[k].params})), connections};
+  const txt = JSON.stringify(data, null, 2);
+  navigator.clipboard?.writeText(txt).then(()=> alert('Export copied to clipboard'));
+});
+
+/* ---------- resize & render loop ---------- */
+window.addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  drawAllConnections();
+});
+
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+animate();
+
+/* ---------- startup ---------- */
+setupInitialNodes();
+drawAllConnections();
+evaluateGraph();
+
 </script>
 </body>
 </html>
